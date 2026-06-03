@@ -6,36 +6,7 @@ Automatically detects and captures **persons, cars, motorcycles, bicycles, buses
 
 ---
 
-## 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Container                     │
-│                                                         │
-│  ┌─────────────┐    ┌──────────────┐    ┌───────────┐  │
-│  │   FastAPI    │───▶│   Jinja2     │───▶│  Browser   │ │
-│  │   (app.py)  │    │  Templates   │    │ Dashboard  │  │
-│  └──────┬──────┘    └──────────────┘    └───────────┘  │
-│         │                                               │
-│  ┌──────┴──────┐    ┌──────────────┐                   │
-│  │   Stream    │───▶│   Object     │                   │
-│  │  Manager    │    │  Detector    │                   │
-│  │ (threads)   │    │  (YOLOv8n)  │                   │
-│  └──────┬──────┘    └──────┬───────┘                   │
-│         │                  │                            │
-│  ┌──────┴──────┐    ┌──────┴───────┐                   │
-│  │   RTSP      │    │   SQLite     │                   │
-│  │  Streams    │    │  Database    │                   │
-│  │ (OpenCV)    │    │             │                   │
-│  └─────────────┘    └──────────────┘                   │
-│                            │                            │
-│  ┌─────────────────────────┴────────────────────────┐  │
-│  │          Persistent Volume (/app/detections)      │  │
-│  │  ┌──────────────┐  ┌───────────────────────────┐ │  │
-│  │  │ detections.db │  │ images/ (cropped objects) │ │  │
-│  │  └──────────────┘  └───────────────────────────┘ │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
 ```
 
 ### Component Overview
@@ -60,7 +31,7 @@ Automatically detects and captures **persons, cars, motorcycles, bicycles, buses
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -248,7 +219,7 @@ backend_dev_test/
 
 ---
 
-## 🖼 Screenshots
+##  Screenshots
 
 ### Dashboard
 
