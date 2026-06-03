@@ -231,13 +231,15 @@ backend_dev_test/
 
 > *Screenshot: Live camera feeds with real-time object detection bounding boxes*
 
-![Live Streams](screenshots/live_streams.png)
+![Live Streams](screenshots/live_streams_1.png)
+
+![Live Streams](screenshots/live_streams_2.png)
 
 ### Detection Gallery
 
 > *Screenshot: Browsable gallery of detected objects with filtering and pagination*
 
-![Detection Gallery](screenshots/detection_gallery.png)
+![Detection Gallery](screenshots/live_feed.png)
 
 ---
 
