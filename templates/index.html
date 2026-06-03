@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time RTSP stream monitoring dashboard with YOLOv8 object detection">
+    <title>RTSP Object Detection Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ── CSS Reset & Variables ─────────────────────────────── */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f35;
+            --bg-card-hover: #222842;
+            --border-color: #2d3555;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8892b0;
+            --text-muted: #5a6380;
+            --accent-blue: #3b82f6;
+            --accent-blue-glow: rgba(59, 130, 246, 0.3);
+            --accent-green: #10b981;
+            --accent-green-glow: rgba(16, 185, 129, 0.3);
+            --accent-red: #ef4444;
+            --accent-red-glow: rgba(239, 68, 68, 0.3);
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --gradient-2: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Background Effect ──────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Header ─────────────────────────────────────────── */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+        }
+
+        .header-inner {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .logo h1 span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.85rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .stat-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .dot.green { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green-glow); }
+        .dot.blue { background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue-glow); }
+        .dot.red { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red-glow); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ── Main Layout ────────────────────────────────────── */
+        .main {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+        }
+
+        /* ── Section Headers ────────────────────────────────── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+
+        .section-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .section-title .icon {
+            font-size: 1.1rem;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        /* ── Section Divider ───────────────────────────────── */
+        .section-divider {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2.5rem 0;
+        }
+
+        /* ── Stream Grid ────────────────────────────────────── */
+        .stream-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .stream-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: var(--shadow-card);
+        }
+
+        .stream-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-2px);
+        }
+
+        .stream-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .stream-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stream-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-pill.online {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-pill.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-pill.connecting {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .stream-timestamp {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .stream-video {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stream-video img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .stream-placeholder {
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .stream-placeholder .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stream-placeholder p {
+            font-size: 0.8rem;
+        }
+
+        /* ── Detection Gallery ──────────────────────────────── */
+        .gallery-controls {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+
+        .filter-select {
+            padding: 0.5rem 0.85rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%238892b0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.6rem center;
+            padding-right: 2rem;
+        }
+
+        .filter-select:hover, .filter-select:focus {
+            border-color: var(--accent-blue);
+            outline: none;
+        }
+
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gradient-1);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .detection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .detection-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: var(--transition);
+            box-shadow: var(--shadow-card);
+        }
+
+        .detection-card:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(139, 92, 246, 0.15);
+        }
+
+        .detection-img-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .detection-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .detection-card:hover .detection-img-container img {
+            transform: scale(1.05);
+        }
+
+        .detection-class-badge {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            padding: 0.2rem 0.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .detection-info {
+            padding: 0.75rem;
+        }
+
+        .detection-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+
+        .detection-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detection-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detection-value {
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
+        .confidence-bar {
+            width: 60px;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.4rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-high { background: var(--accent-green); }
+        .confidence-medium { background: var(--accent-yellow); }
+        .confidence-low { background: var(--accent-red); }
+
+        /* ── Empty State ────────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            font-size: 0.85rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* ── Loading Spinner ────────────────────────────────── */
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Pagination ─────────────────────────────────────── */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .page-btn {
+            padding: 0.45rem 0.85rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding: 0 0.5rem;
+        }
+
+        /* ── Responsive ─────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .header { padding: 0.75rem 1rem; }
+            .main { padding: 1rem; }
+            .header-stats { gap: 0.5rem; }
+            .stat-badge { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+            .stream-grid { grid-template-columns: 1fr; }
+            .detection-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+        }
+
+        /* ── Scrollbar ──────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ── Toast Notification ──────────────────────────────── */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon">📡</div>
+                <h1><span>RTSP</span> Detection System</h1>
+            </div>
+            <div class="header-stats">
+                <div class="stat-badge" id="stat-streams">
+                    <span class="dot green"></span>
+                    <span id="streams-count">{{ streams|length }}</span> Stream(s)
+                </div>
+                <div class="stat-badge" id="stat-detections">
+                    <span class="dot blue"></span>
+                    <span id="detections-count">0</span> Detections
+                </div>
+                <div class="stat-badge" id="stat-status">
+                    <span class="dot green"></span>
+                    System Active
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main">
+
+        <!-- ═══ Section: Live Streams ═══ -->
+        <section id="section-streams">
+            <div class="section-header">
+                <div>
+                    <div class="section-title">
+                        <span class="icon">📹</span> Live Camera Feeds
+                    </div>
+                    <div class="section-subtitle">Real-time RTSP streams with YOLOv8 object detection</div>
+                </div>
+            </div>
+
+            {% if streams %}
+            <div class="stream-grid" id="stream-grid">
+                {% for stream in streams %}
+                <div class="stream-card" id="stream-card-{{ stream.name | replace(' ', '_') }}">
+                    <div class="stream-header">
+                        <div class="stream-name">
+                            🎥 {{ stream.name }}
+                        </div>
+                        <div class="stream-meta">
+                            <span class="status-pill {{ stream.status }}" id="status-{{ stream.name | replace(' ', '_') }}">
+                                <span class="dot {{ 'green' if stream.status == 'online' else ('red' if stream.status == 'offline' else 'yellow') }}" style="width:6px;height:6px;"></span>
+                                {{ stream.status }}
+                            </span>
+                            <span class="stream-timestamp" id="timestamp-{{ stream.name | replace(' ', '_') }}">
+                                {{ stream.last_frame_time or 'Waiting...' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="stream-video">
+                        {% if stream.status == 'online' %}
+                        <img src="/video/{{ stream.name }}"
+                             alt="Live feed from {{ stream.name }}"
+                             id="video-{{ stream.name | replace(' ', '_') }}"
+                             loading="lazy">
+                        {% else %}
+                        <div class="stream-placeholder" id="placeholder-{{ stream.name | replace(' ', '_') }}">
+                            <div class="icon">📡</div>
+                            <p>Connecting to {{ stream.name }}...</p>
+                            <div class="spinner" style="margin-top: 1rem;"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="icon">📡</div>
+                <h3>No Streams Configured</h3>
+                <p>Add RTSP stream URLs to the <code>.env</code> file and restart the application.</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- ═══ Divider ═══ -->
+        <hr class="section-divider">
+
+        <!-- ═══ Section: Detection Gallery (below streams) ═══ -->
+        <section id="section-detections">
+            <div class="section-header">
+                <div>
+                    <div class="section-title">
+                        <span class="icon">🔍</span> Detection Gallery
+                    </div>
+                    <div class="section-subtitle">Captured object detections sorted by most recent</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="gallery-controls">
+                <select class="filter-select" id="filter-camera">
+                    <option value="">All Cameras</option>
+                    {% for stream in streams %}
+                    <option value="{{ stream.name }}">{{ stream.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="filter-select" id="filter-class">
+                    <option value="">All Classes</option>
+                    <option value="person">Person</option>
+                    <option value="car">Car</option>
+                    <option value="motorcycle">Motorcycle</option>
+                    <option value="bicycle">Bicycle</option>
+                    <option value="bus">Bus</option>
+                    <option value="truck">Truck</option>
+                </select>
+                <button class="refresh-btn" id="btn-refresh" onclick="loadDetections()">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <!-- Detection Grid -->
+            <div id="detection-gallery">
+                <div class="detection-grid" id="detection-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+                <div id="gallery-empty" class="empty-state" style="display: none;">
+                    <div class="icon">🔍</div>
+                    <h3>No Detections Yet</h3>
+                    <p>Detections will appear here as objects are detected in the camera streams.</p>
+                </div>
+                <div id="gallery-loading" style="text-align: center; padding: 2rem;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+                <button class="page-btn" id="btn-prev" onclick="changePage(-1)" disabled>← Previous</button>
+                <span class="page-info" id="page-info">Page 1</span>
+                <button class="page-btn" id="btn-next" onclick="changePage(1)">Next →</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ═══ JavaScript ═══ -->
+    <script>
+        // ── State ────────────────────────────────────────────
+        let currentPage = 0;
+        const pageSize = 24;
+        let totalDetections = 0;
+
+        // ── Stream Status Polling ────────────────────────────
+        async function updateStreamStatus() {
+            try {
+                const resp = await fetch('/api/streams');
+                const data = await resp.json();
+                const streams = data.streams || [];
+
+                let onlineCount = 0;
+
+                streams.forEach(stream => {
+                    const safeName = stream.name.replace(/ /g, '_');
+
+                    // Update status pill
+                    const statusEl = document.getElementById(`status-${safeName}`);
+                    if (statusEl) {
+                        const dotClass = stream.status === 'online' ? 'green' :
+                                         stream.status === 'offline' ? 'red' : 'yellow';
+                        statusEl.className = `status-pill ${stream.status}`;
+                        statusEl.innerHTML = `<span class="dot ${dotClass}" style="width:6px;height:6px;"></span> ${stream.status}`;
+                    }
+
+                    // Update timestamp
+                    const tsEl = document.getElementById(`timestamp-${safeName}`);
+                    if (tsEl && stream.last_frame_time) {
+                        const dt = new Date(stream.last_frame_time);
+                        tsEl.textContent = dt.toLocaleTimeString();
+                    }
+
+                    // Update video feed if stream comes online
+                    const placeholder = document.getElementById(`placeholder-${safeName}`);
+                    const videoEl = document.getElementById(`video-${safeName}`);
+
+                    if (stream.status === 'online') {
+                        onlineCount++;
+                        if (placeholder && !videoEl) {
+                            const container = placeholder.parentElement;
+                            container.innerHTML = `<img src="/video/${stream.name}" alt="Live feed from ${stream.name}" id="video-${safeName}" loading="lazy">`;
+                        }
+                    }
+                });
+
+                // Update header stats
+                document.getElementById('streams-count').textContent = streams.length;
+
+            } catch (err) {
+                console.error('Failed to update stream status:', err);
+            }
+        }
+
+        // ── Detection Gallery ────────────────────────────────
+        async function loadDetections() {
+            const grid = document.getElementById('detection-grid');
+            const empty = document.getElementById('gallery-empty');
+            const loading = document.getElementById('gallery-loading');
+
+            loading.style.display = 'block';
+            grid.innerHTML = '';
+            empty.style.display = 'none';
+
+            const camera = document.getElementById('filter-camera').value;
+            const className = document.getElementById('filter-class').value;
+
+            const params = new URLSearchParams({
+                limit: pageSize,
+                offset: currentPage * pageSize,
+            });
+            if (camera) params.append('camera', camera);
+            if (className) params.append('class_name', className);
+
+            try {
+                const resp = await fetch(`/api/detections?${params}`);
+                const data = await resp.json();
+
+                totalDetections = data.total || 0;
+                document.getElementById('detections-count').textContent = totalDetections;
+                loading.style.display = 'none';
+
+                if (data.detections && data.detections.length > 0) {
+                    data.detections.forEach(det => {
+                        grid.appendChild(createDetectionCard(det));
+                    });
+                    empty.style.display = 'none';
+                } else {
+                    empty.style.display = 'block';
+                }
+
+                updatePagination();
+
+            } catch (err) {
+                console.error('Failed to load detections:', err);
+                loading.style.display = 'none';
+                empty.style.display = 'block';
+            }
+        }
+
+        function createDetectionCard(det) {
+            const card = document.createElement('div');
+            card.className = 'detection-card';
+
+            const confidence = (det.confidence * 100).toFixed(1);
+            const confClass = det.confidence >= 0.8 ? 'high' :
+                              det.confidence >= 0.5 ? 'medium' : 'low';
+
+            const timestamp = new Date(det.timestamp);
+            const timeStr = timestamp.toLocaleString();
+
+            card.innerHTML = `
+                <div class="detection-img-container">
+                    <img src="${det.image_path}" alt="${det.class_name} detection" loading="lazy"
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%231a1f35%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%235a6380%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22%3EImage unavailable%3C/text%3E%3C/svg%3E'">
+                    <span class="detection-class-badge">${det.class_name}</span>
+                </div>
+                <div class="detection-info">
+                    <div class="detection-info-row">
+                        <span class="detection-label">Confidence</span>
+                        <span class="detection-value">
+                            ${confidence}%
+                            <span class="confidence-bar">
+                                <span class="confidence-fill confidence-${confClass}"
+                                      style="width: ${confidence}%"></span>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="detection-info-row">
+                        <span class="detection-label">Camera</span>
+                        <span class="detection-value">${det.camera_name}</span>
+                    </div>
+                    <div class="detection-info-row">
+                        <span class="detection-label">Time</span>
+                        <span class="detection-value">${timeStr}</span>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // ── Pagination ───────────────────────────────────────
+        function changePage(direction) {
+            const maxPage = Math.max(0, Math.ceil(totalDetections / pageSize) - 1);
+            currentPage = Math.max(0, Math.min(maxPage, currentPage + direction));
+            loadDetections();
+        }
+
+        function updatePagination() {
+            const maxPage = Math.max(0, Math.ceil(totalDetections / pageSize) - 1);
+            document.getElementById('btn-prev').disabled = currentPage <= 0;
+            document.getElementById('btn-next').disabled = currentPage >= maxPage;
+            document.getElementById('page-info').textContent =
+                `Page ${currentPage + 1} of ${maxPage + 1} (${totalDetections} total)`;
+        }
+
+        // ── Filter Change Handlers ───────────────────────────
+        document.getElementById('filter-camera').addEventListener('change', () => {
+            currentPage = 0;
+            loadDetections();
+        });
+
+        document.getElementById('filter-class').addEventListener('change', () => {
+            currentPage = 0;
+            loadDetections();
+        });
+
+        // ── Toast Notifications ──────────────────────────────
+        function showToast(message, duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        // ── Auto-refresh ─────────────────────────────────────
+        // Update stream status every 5 seconds
+        setInterval(updateStreamStatus, 5000);
+
+        // Auto-refresh detection gallery every 10 seconds
+        setInterval(() => {
+            loadDetections();
+        }, 10000);
+
+        // Initial load
+        updateStreamStatus();
+        loadDetections();
+    </script>
+</body>
+</html>

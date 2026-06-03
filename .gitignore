@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Detection images and database (managed by Docker volume)
+detections/images/
+detections/*.db
+detections/*.db-shm
+detections/*.db-wal
+detections/*.db-journal
+
+# YOLO model weights (auto-downloaded during Docker build)
+yolov8n.pt

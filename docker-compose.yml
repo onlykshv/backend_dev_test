@@ -1,0 +1,23 @@
+
+services:
+  rtsp-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rtsp-object-detection
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persistent volume for detection images and database
+      - detections_data:/app/detections
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DETECTIONS_DIR=/app/detections/images
+      - DB_PATH=/app/detections/detections.db
+
+volumes:
+  detections_data:
+    driver: local
