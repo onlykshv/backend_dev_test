@@ -15,6 +15,8 @@ WORKDIR /app
 
 # Install Python dependencies first (cache layer)
 COPY requirements.txt .
+# Install CPU-only PyTorch and Torchvision to prevent huge CUDA downloads (saves ~1.5gb) and out-of-memory build errors
+RUN pip install --no-cache-dir torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download the YOLOv8n model weights so the container
